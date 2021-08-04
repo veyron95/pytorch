@@ -2138,8 +2138,7 @@ std::vector<Tensor> unbind(const Tensor& self, Dimname dim) {
   return at::unbind(self, dimname_to_position(self, dim));
 }
 
-std::vector<Tensor> meshgrid(TensorList tensors,
-                             c10::optional<c10::string_view> indexing) {
+std::vector<Tensor> meshgrid(TensorList tensors, c10::string_view indexing) {
   int64_t size = tensors.size();
   TORCH_CHECK(size > 0, "meshgrid expects a non-empty TensorList");
 
@@ -2180,13 +2179,7 @@ std::vector<Tensor> meshgrid(TensorList tensors,
   // * Why do we even support this function for exactly one input?
   bool swap_first_and_second_tensors;
 
-  TORCH_CHECK(indexing.has_value(),
-              "torch.meshgrid: the \"indexing\" parameter is required. The "
-              "default value was \"ij\", so pass indexing='ij' to keep the "
-              "existing behavior. In a future release of PyTorch the default "
-              "will become \"xy\".");
-
-  if (*indexing == "xy") {
+  if (indexing == "xy") {
     // We can only swap if there are multiple tensors.
     swap_first_and_second_tensors = size >= 2;
     if (swap_first_and_second_tensors) {
