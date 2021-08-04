@@ -2180,26 +2180,25 @@ std::vector<Tensor> meshgrid(TensorList tensors,
   // * Why do we even support this function for exactly one input?
   bool swap_first_and_second_tensors;
 
-  if (!indexing.has_value()) {
-    TORCH_WARN_ONCE("torch.meshgrid: in an upcoming release, it will be required to pass the "
-                    "indexing argument.");
-    indexing = "ij";
-    swap_first_and_second_tensors = false;
-  } else {
-    if (*indexing == "xy") {
-      // We can only swap if there are multiple tensors.
-      swap_first_and_second_tensors = size >= 2;
-      if (swap_first_and_second_tensors) {
-        std::swap(tensor_refs[0], tensor_refs[1]);
-      }
-    } else {
-      // Only "xy" and "ij" are supported, and we already checked for
-      // "xy" above. Only "ij" remains as a valid mode.
-      TORCH_CHECK(*indexing == "ij",
-                  "torch.meshgrid: indexing must be one of \"xy\" or \"ij\", "
-                  "but received: ", *indexing);
-      swap_first_and_second_tensors = false;
+  TORCH_CHECK(indexing.has_value(),
+              "torch.meshgrid: the \"indexing\" parameter is required. The "
+              "default value was \"ij\", so pass indexing='ij' to keep the "
+              "existing behavior. In a future release of PyTorch the default "
+              "will become \"xy\".");
+
+  if (*indexing == "xy") {
+    // We can only swap if there are multiple tensors.
+    swap_first_and_second_tensors = size >= 2;
+    if (swap_first_and_second_tensors) {
+      std::swap(tensor_refs[0], tensor_refs[1]);
     }
+  } else {
+    // Only "xy" and "ij" are supported, and we already checked for
+    // "xy" above. Only "ij" remains as a valid mode.
+    TORCH_CHECK(*indexing == "ij",
+                "torch.meshgrid: indexing must be one of \"xy\" or \"ij\", "
+                "but received: ", *indexing);
+    swap_first_and_second_tensors = false;
   }
 
   std::vector<int64_t> shape(size);
