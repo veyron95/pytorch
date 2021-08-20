@@ -631,6 +631,40 @@ class TestFunctionalIterDataPipe(TestCase):
         self.assertEqual(list(range(10)), output3)
 
 
+    def test_demux_datapipe(self):
+        input_dp = IDP(range(10))
+
+        # Test Case: split into 2 DataPipes and output them one at a time
+        dp1, dp2 = input_dp.demux(num_instances=2, classifier_fn=lambda x: x % 2)
+        output1, output2 = list(dp1), list(dp2)
+        self.assertEqual(list(range(0, 10, 2)), output1)
+        self.assertEqual(list(range(1, 10, 2)), output2)
+
+        # Test Case: split into 2 DataPipes and output them together
+        dp1, dp2 = input_dp.demux(num_instances=2, classifier_fn=lambda x: x % 2)
+        output = []
+        for n1, n2 in zip(dp1, dp2):
+            output.append((n1, n2))
+        self.assertEqual([(i, i + 1) for i in range(0, 10, 2)], output)
+
+        # Test case: values of the same classification are lumped together, and buffer_size = 3 being too small
+        dp1, dp2 = input_dp.demux(num_instances=2, classifier_fn=lambda x: 0 if x >= 5 else 1, buffer_size=3)
+        with self.assertRaises(BufferError):
+            output1 = list(dp1)
+
+        # Test case: values of the same classification are lumped together, and buffer_size = 5 is just enough
+        dp1, dp2 = input_dp.demux(num_instances=2, classifier_fn=lambda x: 0 if x >= 5 else 1, buffer_size=5)
+        output1, output2 = list(dp1), list(dp2)
+        self.assertEqual(list(range(5, 10)), output1)
+        self.assertEqual(list(range(0, 5)), output2)
+
+        # Test case: classifer returns a value outside of [0, num_instance - 1]
+        dp = input_dp.demux(num_instances=1, classifier_fn=lambda x: x % 2)
+        with self.assertRaises(ValueError):
+            for n in dp[0]:
+                print(n)
+
+
     def test_map_datapipe(self):
         input_dp = IDP(range(10))
 
