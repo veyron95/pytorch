@@ -182,4 +182,51 @@ TYPED_TEST(CmpTest, Cmp) {
   EXPECT_THAT(y, Ge(x));
 }
 
+enum class Operator { eq, ne, lt, le, gt, ge };
+
+template <typename T>
+class OperatorSpy {
+ public:
+  explicit OperatorSpy(T const& value) : value_(value) {}
+
+  // REQUIRES: this instance to have been compared with another value
+  Operator get_operator() {
+    return *operator_;
+  }
+
+  bool operator==(OperatorSpy const& that) const {
+    operator_ = that.operator_ = Operator::eq;
+    return value_ == that.value_;
+  }
+
+  bool operator!=(OperatorSpy const& that) const {
+    operator_ = that.operator_ = Operator::ne;
+    return value_ != that.value_;
+  }
+
+  bool operator<(OperatorSpy const& that) const {
+    operator_ = that.operator_ = Operator::lt;
+    return value_ < that.value_;
+  }
+
+  bool operator<=(OperatorSpy const& that) const {
+    operator_ = that.operator_ = Operator::le;
+    return value_ <= that.value_;
+  }
+
+  bool operator>(OperatorSpy const& that) const {
+    operator_ = that.operator_ = Operator::gt;
+    return value_ > that.value_;
+  }
+
+  bool operator>=(OperatorSpy const& that) const {
+    operator_ = that.operator_ = Operator::ge;
+    return value_ >= that.value_;
+  }
+
+ private:
+  T value_;
+  mutable c10::optional<Operator> operator_;
+};
+
 } // namespace
