@@ -6,7 +6,7 @@
 namespace torch {
 namespace jit {
 enum class Strategy {
-  NAIVE,
+  NAIVE = 0,
   GREEDY_BY_SIZE,
   GREEDY_BY_BREADTH,
   LINEAR_SCAN,
@@ -35,6 +35,33 @@ typedef struct Region {
   uint64_t offset;
   uint64_t size;
 } Region;
+
+struct TORCH_API MemEvent {
+  enum class EventType { Allocate = 0, Free };
+
+  uint64_t time;
+  std::string allocation_trace;
+  std::string ptr_addr;
+  std::string node_schema;
+  std::string node_header;
+  uint64_t size;
+  EventType type;
+  MemEvent(
+      uint64_t t,
+      std::string alloc_trace,
+      std::string address,
+      std::string node_schem,
+      std::string node_head,
+      uint64_t s,
+      EventType e)
+      : time(t),
+        allocation_trace(std::move(alloc_trace)),
+        ptr_addr(std::move(address)),
+        node_schema(std::move(node_schem)),
+        node_header(std::move(node_head)),
+        size(s),
+        type(e) {}
+};
 
 inline std::ostream& operator<<(std::ostream& str, Region reg) {
   return str << "{offset: " << reg.offset << ", size: " << reg.size << "}";
@@ -78,11 +105,36 @@ struct region_offset_cmp {
   }
 };
 
+struct frame_node_id_hash {
+  size_t operator()(FrameNodeId const& frame_node_id) const {
+    return std::hash<size_t>()(frame_node_id.pc) ^
+        (std::hash<std::string>()(frame_node_id.node_schema) << 1) ^
+        (std::hash<std::string>()(frame_node_id.node_header) << 2);
+  }
+};
+
+struct frame_node_id_cmp {
+  size_t operator()(
+      const std::pair<FrameNodeId, std::vector<LiveRange>>& f1,
+      const std::pair<FrameNodeId, std::vector<LiveRange>>& f2) const {
+    return f1.first.pc < f2.first.pc;
+  }
+};
+
+inline bool operator==(const FrameNodeId& lhs, const FrameNodeId& rhs) {
+  return lhs.pc == rhs.pc && lhs.node_schema == rhs.node_schema &&
+      lhs.node_header == rhs.node_header;
+}
+
 c10::optional<uint64_t> computeStorageSize(const Value& value);
 
 bool hasOutVariant(Node* node);
 
 TORCH_API void planMemory(std::shared_ptr<Graph>&, Strategy);
+TORCH_API void planMemoryWithTracing(
+    std::shared_ptr<Graph>& graph,
+    Strategy strat,
+    std::vector<MemEvent> mem_events);
 
 #define PRINT_CURR_ALLOC(x, y) \
   std::cout << __LINE__ << " " << x << " " << y << "\n";
